@@ -65,24 +65,7 @@ class ReactLoadableSSRAddon {
    */
   get manifestOutputPath() {
     const { filename } = this.options;
-    if (path.isAbsolute(filename)) {
-      return filename;
-    }
-
-    const { outputPath, options: { devServer } } = this.compiler;
-
-    if (this.isRequestFromDevServer && devServer) {
-      let devOutputPath = (devServer.outputPath || outputPath || '/');
-
-      if (devOutputPath === '/') {
-        console.warn('Please use an absolute path in options.output when using webpack-dev-server.');
-        devOutputPath = this.compiler.context || process.cwd();
-      }
-
-      return path.resolve(devOutputPath, filename);
-    }
-
-    return path.resolve(outputPath, filename);
+    return filename;
   }
 
   /**
@@ -249,7 +232,7 @@ class ReactLoadableSSRAddon {
 
     this.getAssets(this.getMinimalStatsChunks(compilation.chunks));
     this.processAssets(compilation.assets);
-    this.writeAssetsFile();
+    this.writeAssetsFile(compilation);
 
     callback();
   }
@@ -321,21 +304,14 @@ class ReactLoadableSSRAddon {
    * Write Assets Manifest file
    * @method writeAssetsFile
    */
-  writeAssetsFile() {
+  writeAssetsFile(compilation) {
     const filePath = this.manifestOutputPath;
     const fileDir = path.dirname(filePath);
     const json = JSON.stringify(this.manifest, null, 2);
-    try {
-      if (!fs.existsSync(fileDir)) {
-        fs.mkdirSync(fileDir);
-      }
-    } catch (err) {
-      if (err.code !== 'EEXIST') {
-        throw err;
-      }
-    }
-
-    fs.writeFileSync(filePath, json);
+    compilation.assets[filePath] = {
+     source: () => json,
+      size: () => json.length
+    };
   }
 
   /**
